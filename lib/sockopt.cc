@@ -1,7 +1,9 @@
 #include <napi.h>
 #include <errno.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <string>
 
 Napi::Value Getsockopt(const Napi::CallbackInfo& args) {
 	Napi::Env env = args.Env();
@@ -58,9 +60,35 @@ Napi::Value Setsockopt(const Napi::CallbackInfo& args) {
 	return env.Null();
 }
 
+Napi::Value Setsockoptstring(const Napi::CallbackInfo& args) {
+	Napi::Env env = args.Env();
+
+	if (args.Length() < 4 ||
+		!args[0].IsNumber() || !args[1].IsNumber() ||
+		!args[2].IsNumber() || !args[3].IsString()) {
+		Napi::TypeError::New(env, "Wrong arguments").ThrowAsJavaScriptException();
+		return env.Null();
+	}
+
+	int socket = args[0].As<Napi::Number>().Int32Value();
+	int level  = args[1].As<Napi::Number>().Int32Value();
+	int name   = args[2].As<Napi::Number>().Int32Value();
+
+	std::string str = args[3].As<Napi::String>().Utf8Value();
+
+	if (0 != setsockopt(socket, level, name, str.c_str(), str.length())) {
+		char msg[100];
+		snprintf(msg, sizeof(msg), "setsockopt failed: %s (%d)", strerror(errno), errno);
+		Napi::TypeError::New(env, msg).ThrowAsJavaScriptException();
+	}
+
+	return env.Null();
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
 	exports.Set(Napi::String::New(env, "getsockopt"), Napi::Function::New(env, Getsockopt));
 	exports.Set(Napi::String::New(env, "setsockopt"), Napi::Function::New(env, Setsockopt));
+	exports.Set(Napi::String::New(env, "setsockoptString"), Napi::Function::New(env, Setsockoptstring));
 	return exports;
 }
 

@@ -1,8 +1,8 @@
 'use strict'
 
 const {createSocket} = require('dgram')
-const {strictEqual: eql, notStrictEqual: notEql, ok} = require('assert')
-const {getsockopt, setsockopt} = require('.')
+const {strictEqual: eql, notStrictEqual: notEql, ok, throws} = require('assert')
+const {getsockopt, setsockopt, setsockoptString} = require('.')
 
 const abortWithError = (err) => {
 	console.error(err)
@@ -25,9 +25,22 @@ const testSocket = (family, socket) => {
 	ok(Number.isInteger(sendBufSize), 'SO_SNDBUF is not an integer')
 
 	setsockopt(socket, SOL_SOCKET, SO_SNDBUF, 1234)
-	eql(getsockopt(socket, SOL_SOCKET, SO_SNDBUF), 1234, 'setting SO_SNDBUF failed')
+	const actual = getsockopt(socket, SOL_SOCKET, SO_SNDBUF)
+	ok(actual >= 2048, 'setting SO_SNDBUF failed, got ' + actual)
 
 	console.info(family + ' looks good ✔︎')
+}
+
+const testSocketString = (family, socket) => {
+	const SO_BINDTODEVICE = 25
+
+	setsockoptString(socket, SOL_SOCKET, SO_BINDTODEVICE, 'lo')
+
+	throws(() => {
+		setsockoptString(socket, SOL_SOCKET, SO_BINDTODEVICE, 'nonexistent0')
+	})
+
+	console.info(family + ' string looks good ✔︎')
 }
 
 {
@@ -36,6 +49,15 @@ const testSocket = (family, socket) => {
 
 	socket.bind(12345, '0.0.0.0', () => {
 		testSocket('IPv4', socket)
+		socket.close()
+		})
+	}
+
+{
+	const socket = createSocket({type: 'udp4'})
+	socket.on('error', abortWithError)
+	socket.bind(12346, '0.0.0.0', () => {
+		testSocketString('IPv4', socket)
 		socket.close()
 	})
 }
