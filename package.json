@@ -9,7 +9,8 @@
 		"binding.gyp",
 		"lib",
 		"prebuilds",
-		"example.js"
+		"example.js",
+		"build"
 	],
 	"keywords": [
 		"getsockopt",
